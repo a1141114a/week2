@@ -103,7 +103,7 @@
 ![Task 1](images/task1.png)
 
 - 실행: `task1.html` (ISS 구는 보이지 않아 주황 점으로만 표시 — 실제 비율의 한계 그 자체)
-- 공유 링크: *[과제 도구에서 위 설정을 입력 후 「공유 링크 복사」로 생성해 이곳에 붙여 넣으세요]*
+- 공유 링크: https://github.com/a1141114a/week2/blob/main/task1.html
 
 ---
 
