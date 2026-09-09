@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Task 3 — 표현 개선</title>
+<style>
+html,body{margin:0;height:100%;background:#05070d;overflow:hidden;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;}
+#c{width:100%;height:100%;display:block;}
+#legend{position:fixed;left:14px;top:14px;color:#dde3f0;background:rgba(8,12,22,.78);padding:12px 16px;border-radius:10px;font-size:13px;line-height:1.75;max-width:380px;}
+#legend b{color:#fff;font-size:14px;}
+.tag{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;}
+#hud{position:fixed;right:14px;bottom:12px;color:#9fb3d9;background:rgba(8,12,22,.6);padding:6px 12px;border-radius:8px;font-size:12px;}
+code{color:#9fd0ff;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="legend"><b>Task 3 — 보는 사람을 위한 표현</b><br>
+① <b>거리 로그 압축</b>: d&prime; = ln(1+d) / ln(1+60.3)<br>
+&nbsp;&nbsp;· 달 60.3 → <b>1.000</b>, ISS 궤도 1.063 → <b>0.176</b><br>
+② <b>크기만 과장</b>: 지구 0.15, 달 0.041 (실제 비 0.273 유지), ISS 0.008<br>
+③ 궤도 원 + 범례로 구조 명시<br>
+<hr style="border-color:#334">
+<span class="tag" style="background:#c7c7cc"></span>달 궤도 (경사 5.1°)<br>
+<span class="tag" style="background:#d98c26"></span>ISS 궤도 (경사 51.6°)<br>
+· <b>장점</b>: 세 물체·궤도 구조·조석 고정을 한 화면에<br>
+· <b>잃는 것</b>: 절대 크기·거리의 정확한 비율</div>
+<div id="hud">Week2 과제 1 — Task 3 — 표현 개선</div>
+<script>
+"use strict";
+const CFG = {"camera": {"eye": [0, -2.7, 1.55], "fov": 45, "near": 0.01, "far": 100}, "light": [0.55, 0.45, 0.85], "orbits": [{"r": 1.0, "inclDeg": 5.1, "color": [0.45, 0.45, 0.5]}, {"r": 0.176, "inclDeg": 51.6, "color": [0.85, 0.55, 0.15]}], "objects": [{"color": [0.3, 0.55, 0.95], "scale": 0.15, "spin": {"axis": "z", "speed": 30}}, {"color": [0.78, 0.78, 0.8], "scale": 0.041, "orbit": {"speed": 4, "dist": 1.0, "inclDeg": 5.1}}, {"color": [1.0, 0.62, 0.1], "scale": 0.008, "orbit": {"speed": 40, "dist": 0.176, "inclDeg": 51.6}}], "marker": {"dist": 0.176, "inclDeg": 51.6, "speed": 40, "color": [1.0, 0.85, 0.3], "size": 8}};
+
+const VSrc = `
+attribute vec3 aPos; attribute vec3 aNor;
+uniform mat4 uMVP, uModel; uniform float uPS;
+varying vec3 vN; varying vec3 vW;
+void main(){
+  vec4 w = uModel * vec4(aPos,1.0);
+  vW = w.xyz;
+  vN = mat3(uModel[0].xyz, uModel[1].xyz, uModel[2].xyz) * aNor;
+  if(uPS > 0.0) gl_PointSize = uPS;
+  gl_Position = uMVP * vec4(aPos,1.0);
+}`;
+const FSrc = `
+precision mediump float;
+varying vec3 vN; varying vec3 vW;
+uniform vec3 uColor, uLight; uniform float uUnlit;
+void main(){
+  if(uUnlit > 0.5){ gl_FragColor = vec4(uColor,1.0); return; }
+  vec3 n = normalize(vN);
+  float d = max(dot(n, normalize(uLight)), 0.0);
+  gl_FragColor = vec4(uColor*(0.22+0.78*d), 1.0);
+}`;
+
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl', {antialias:true});
+function resize(){
+  const d = Math.min(window.devicePixelRatio||1, 2);
+  canvas.width = canvas.clientWidth*d; canvas.height = canvas.clientHeight*d;
+  gl.viewport(0,0,canvas.width,canvas.height);
+}
+addEventListener('resize', resize);
+function shader(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);return o;}
+const prog = gl.createProgram();
+gl.attachShader(prog, shader(gl.VERTEX_SHADER, VSrc));
+gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, FSrc));
+gl.linkProgram(prog); gl.useProgram(prog);
+const A = { pos: gl.getAttribLocation(prog,'aPos'), nor: gl.getAttribLocation(prog,'aNor') };
+const U = { mvp: gl.getUniformLocation(prog,'uMVP'), mdl: gl.getUniformLocation(prog,'uModel'),
+            col: gl.getUniformLocation(prog,'uColor'), lgt: gl.getUniformLocation(prog,'uLight'),
+            ps:  gl.getUniformLocation(prog,'uPS'),  unlit: gl.getUniformLocation(prog,'uUnlit') };
+gl.uniform3fv(U.lgt, CFG.light||[0.55,0.45,0.85]);
+
+/* --- mat4 (column-major) --- */
+function m4(){return new Float32Array(16);}
+function ident(){const m=m4();m[0]=m[5]=m[10]=m[15]=1;return m;}
+function mul(a,b){const o=m4();for(let c=0;c<4;c++)for(let r=0;r<4;r++){o[c*4+r]=a[r]*b[c*4]+a[4+r]*b[c*4+1]+a[8+r]*b[c*4+2]+a[12+r]*b[c*4+3];}return o;}
+function trans(x,y,z){const m=ident();m[12]=x;m[13]=y;m[14]=z;return m;}
+function scl(x,y,z){const m=ident();m[0]=x;m[5]=y;m[10]=z;return m;}
+function rot(ax,deg){const m=ident(),r=deg*Math.PI/180,c=Math.cos(r),s=Math.sin(r);
+  if(ax==='x'){m[5]=c;m[6]=s;m[9]=-s;m[10]=c;}
+  else if(ax==='y'){m[0]=c;m[2]=-s;m[8]=s;m[10]=c;}
+  else {m[0]=c;m[1]=s;m[4]=-s;m[5]=c;}
+  return m;}
+function sub3(a,b){return [a[0]-b[0],a[1]-b[1],a[2]-b[2]];}
+function cross3(a,b){return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];}
+function dot3(a,b){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
+function norm3(a){const l=Math.hypot(a[0],a[1],a[2])||1;return [a[0]/l,a[1]/l,a[2]/l];}
+function persp(fov,asp,n,f){const t=1/Math.tan(fov*Math.PI/360),m=m4();m[0]=t/asp;m[5]=t;m[10]=(f+n)/(n-f);m[11]=-1;m[14]=2*f*n/(n-f);return m;}
+function lookAt(e,c,up){
+  const z=norm3(sub3(e,c)), x=norm3(cross3(up,z)), y=cross3(z,x);
+  const m=ident();
+  m[0]=x[0];m[1]=y[0];m[2]=z[0]; m[4]=x[1];m[5]=y[1];m[6]=z[1]; m[8]=x[2];m[9]=y[2];m[10]=z[2];
+  m[12]=-dot3(x,e); m[13]=-dot3(y,e); m[14]=-dot3(z,e); return m;}
+
+/* --- 구 메시 --- */
+function makeSphere(st,s){
+  const p=[], n=[];
+  for(let i=0;i<=st;i++){const ph=i/st*Math.PI;
+    for(let j=0;j<=s;j++){const th=j/s*2*Math.PI;
+      const x=Math.sin(ph)*Math.cos(th), y=Math.sin(ph)*Math.sin(th), z=Math.cos(ph);
+      p.push(x,y,z); n.push(x,y,z);}}
+  const idx=[];
+  for(let i=0;i<st;i++)for(let j=0;j<s;j++){
+    const a=i*(s+1)+j, b=a+s+1;
+    idx.push(a,b,a+1, b,b+1,a+1);}
+  const vbo=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,vbo);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(p),gl.STATIC_DRAW);
+  const vbo2=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,vbo2);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(n),gl.STATIC_DRAW);
+  const ibo=gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ibo);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(idx),gl.STATIC_DRAW);
+  return {vbo,vbo2,ibo,count:idx.length};
+}
+const sph = makeSphere(26,40);
+
+const dynVBO = gl.createBuffer();
+function drawLines(pts, color, MVP, mode, ptSize){
+  gl.disableVertexAttribArray(A.nor);
+  gl.bindBuffer(gl.ARRAY_BUFFER, dynVBO);
+  gl.bufferData(gl.ARRAY_BUFFER, pts, gl.DYNAMIC_DRAW);
+  gl.vertexAttribPointer(A.pos,3,gl.FLOAT,false,0,0);
+  gl.enableVertexAttribArray(A.pos);
+  gl.uniformMatrix4fv(U.mvp,false,MVP);
+  gl.uniformMatrix4fv(U.mdl,false,ident());
+  gl.uniform3fv(U.col,color);
+  gl.uniform1f(U.unlit,1.0);
+  gl.uniform1f(U.ps, ptSize||0.0);
+  gl.drawArrays(mode,0,pts.length/3);
+}
+function drawSphereObj(color, M, VP){
+  gl.enableVertexAttribArray(A.nor);
+  gl.bindBuffer(gl.ARRAY_BUFFER, sph.vbo);
+  gl.vertexAttribPointer(A.pos,3,gl.FLOAT,false,0,0);
+  gl.enableVertexAttribArray(A.pos);
+  gl.bindBuffer(gl.ARRAY_BUFFER, sph.vbo2);
+  gl.vertexAttribPointer(A.nor,3,gl.FLOAT,false,0,0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sph.ibo);
+  gl.uniformMatrix4fv(U.mdl,false,M);
+  gl.uniformMatrix4fv(U.mvp,false,mul(VP,M));
+  gl.uniform3fv(U.col,color);
+  gl.uniform1f(U.unlit,0.0);
+  gl.uniform1f(U.ps,0.0);
+  gl.drawElements(gl.TRIANGLES,sph.count,gl.UNSIGNED_SHORT,0);
+}
+function orbitPts(r,inclDeg){
+  const c=Math.cos(inclDeg*Math.PI/180), s=Math.sin(inclDeg*Math.PI/180), pts=[];
+  for(let i=0;i<=160;i++){const th=i/160*2*Math.PI;
+    pts.push(r*Math.cos(th), c*r*Math.sin(th), s*r*Math.sin(th));}
+  return new Float32Array(pts);
+}
+function markerPos(m,t){
+  const ph=m.speed*t*Math.PI/180, c=Math.cos(m.inclDeg*Math.PI/180), s=Math.sin(m.inclDeg*Math.PI/180);
+  const x=m.dist*Math.cos(ph), y=c*m.dist*Math.sin(ph), z=s*m.dist*Math.sin(ph);
+  const k = CFG.rootScale||1;
+  return new Float32Array([x*k, y*k, z*k]);
+}
+function ndcEdges(){
+  const e=[], v=[];
+  for(const a of [-1,1])for(const b of [-1,1])for(const c2 of [-1,1]) v.push([a,b,c2]);
+  const pairs=[[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]];
+  for(const p of pairs){e.push(...v[p[0]],...v[p[1]]);}
+  return new Float32Array(e);
+}
+
+let t0 = performance.now();
+function frame(now){
+  const t = (now-t0)/1000;
+  gl.clearColor(0.02,0.03,0.05,1);
+  gl.enable(gl.DEPTH_TEST);
+  gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  const cam = CFG.camera;
+  const P = persp(cam.fov, canvas.width/canvas.height, cam.near, cam.far);
+  const V = lookAt(cam.eye,[0,0,0],[0,0,1]);
+  const VP = mul(P,V);
+  if(CFG.ndcBox) drawLines(ndcEdges(),[0.5,0.6,0.8],VP,gl.LINES,0);
+  for(const o of (CFG.orbits||[])) drawLines(orbitPts(o.r,o.inclDeg),o.color,VP,gl.LINE_LOOP,0);
+  for(const obj of CFG.objects){
+    let M = ident();
+    if(obj.orbit){
+      M = mul(M, rot('x', obj.orbit.inclDeg));
+      M = mul(M, rot('z', obj.orbit.speed*t));
+      M = mul(M, trans(obj.orbit.dist,0,0));
+    }
+    if(obj.scale!=null) M = mul(M, scl(obj.scale,obj.scale,obj.scale));
+    if(obj.spin) M = mul(M, rot(obj.spin.axis, obj.spin.speed*t));
+    if(CFG.rootScale) M = mul(scl(CFG.rootScale,CFG.rootScale,CFG.rootScale), M);
+    drawSphereObj(obj.color, M, VP);
+  }
+  if(CFG.marker) drawLines(markerPos(CFG.marker,t), CFG.marker.color, VP, gl.POINTS, CFG.marker.size||10);
+  requestAnimationFrame(frame);
+}
+resize();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
