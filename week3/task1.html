@@ -1,36 +1,40 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Week 3 - Task 1</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Week 3 - Task 1</title>
 
-    <style>
-        body {
-            margin: 0;
-            background: #111;
-            color: white;
-            font-family: Arial, sans-serif;
-            text-align: center;
-        }
+<style>
+body {
+    margin: 0;
+    background: #111;
+    color: white;
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
 
-        h1 {
-            margin: 20px 0 10px;
-        }
+h1 {
+    margin: 18px 0 5px;
+}
 
-        canvas {
-            display: block;
-            margin: 0 auto;
-            background: #222;
-            max-width: 100%;
-        }
-    </style>
+p {
+    margin: 5px 0 15px;
+}
+
+canvas {
+    display: block;
+    margin: 0 auto;
+    max-width: 100%;
+    background: #111;
+}
+</style>
 </head>
 
 <body>
 
 <h1>Week 3 - Task 1</h1>
-<p>회전하는 구와 바닥</p >
+<p>바닥 위에서 회전하는 구</p >
 
 <canvas id="glcanvas" width="800" height="600"></canvas>
 
@@ -56,16 +60,18 @@ uniform mat4 uView;
 uniform mat4 uProjection;
 
 out vec3 vNormal;
+out vec3 vWorldPosition;
 
 void main() {
     vec4 worldPosition = uModel * vec4(aPosition, 1.0);
+
+    vWorldPosition = worldPosition.xyz;
+    vNormal = mat3(uModel) * aNormal;
 
     gl_Position =
         uProjection *
         uView *
         worldPosition;
-
-    vNormal = mat3(uModel) * aNormal;
 }
 `;
 
@@ -79,26 +85,28 @@ const fragmentShaderSource = `#version 300 es
 precision highp float;
 
 in vec3 vNormal;
+in vec3 vWorldPosition;
+
+uniform vec3 uColor;
 
 out vec4 outColor;
 
 void main() {
+
     vec3 N = normalize(vNormal);
 
-    vec3 L = normalize(vec3(
-        1.0,
-        1.0,
-        1.0
-    ));
+    vec3 L = normalize(
+        vec3(1.0, 1.5, 1.0)
+    );
 
-    float light =
+    float diffuse =
         max(dot(N, L), 0.0);
 
-    vec3 baseColor =
-        vec3(0.25, 0.55, 0.95);
+    float light =
+        0.25 + 0.75 * diffuse;
 
     vec3 color =
-        baseColor * (0.25 + 0.75 * light);
+        uColor * light;
 
     outColor =
         vec4(color, 1.0);
@@ -107,13 +115,19 @@ void main() {
 
 
 /* =========================
-   Shader 생성
+   Shader
 ========================= */
 
 function createShader(type, source) {
-    const shader = gl.createShader(type);
 
-    gl.shaderSource(shader, source);
+    const shader =
+        gl.createShader(type);
+
+    gl.shaderSource(
+        shader,
+        source
+    );
+
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(
@@ -140,7 +154,8 @@ const fragmentShader =
         fragmentShaderSource
     );
 
-const program = gl.createProgram();
+const program =
+    gl.createProgram();
 
 gl.attachShader(
     program,
@@ -153,11 +168,12 @@ gl.attachShader(
 );
 
 gl.linkProgram(program);
+
 gl.useProgram(program);
 
 
 /* =========================
-   구 만들기
+   구 생성
 ========================= */
 
 function createSphere(
@@ -211,16 +227,16 @@ function createSphere(
             const z =
                 sinPhi * sinTheta;
 
-            normals.push(
-                x,
-                y,
-                z
-            );
-
             positions.push(
                 radius * x,
                 radius * y,
                 radius * z
+            );
+
+            normals.push(
+                x,
+                y,
+                z
             );
         }
     }
@@ -268,6 +284,60 @@ function createSphere(
     };
 }
 
+
+/* =========================
+   바닥 생성
+========================= */
+
+const groundPositions = [
+    -4, 0, -4,
+     4, 0, -4,
+    -4, 0,  4,
+
+    -4, 0,  4,
+     4, 0, -4,
+     4, 0,  4
+];
+
+const groundNormals = [
+    0,1,0,
+    0,1,0,
+    0,1,0,
+
+    0,1,0,
+    0,1,0,
+    0,1,0
+];
+
+
+/* =========================
+   Buffer 함수
+========================= */
+
+function createBuffer(data) {
+
+    const buffer =
+        gl.createBuffer();
+
+    gl.bindBuffer(
+        gl.ARRAY_BUFFER,
+        buffer
+    );
+
+    gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array(data),
+        gl.STATIC_DRAW
+    );
+
+    return buffer;
+}
+
+
+/* =========================
+   Sphere Buffer
+========================= */
+
 const sphere =
     createSphere(
         1,
@@ -275,51 +345,22 @@ const sphere =
         32
     );
 
-
-/* =========================
-   Buffer
-========================= */
-
-const positionBuffer =
-    gl.createBuffer();
-
-gl.bindBuffer(
-    gl.ARRAY_BUFFER,
-    positionBuffer
-);
-
-gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array(
+const spherePositionBuffer =
+    createBuffer(
         sphere.positions
-    ),
-    gl.STATIC_DRAW
-);
+    );
 
-
-const normalBuffer =
-    gl.createBuffer();
-
-gl.bindBuffer(
-    gl.ARRAY_BUFFER,
-    normalBuffer
-);
-
-gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array(
+const sphereNormalBuffer =
+    createBuffer(
         sphere.normals
-    ),
-    gl.STATIC_DRAW
-);
+    );
 
-
-const indexBuffer =
+const sphereIndexBuffer =
     gl.createBuffer();
 
 gl.bindBuffer(
     gl.ELEMENT_ARRAY_BUFFER,
-    indexBuffer
+    sphereIndexBuffer
 );
 
 gl.bufferData(
@@ -332,7 +373,22 @@ gl.bufferData(
 
 
 /* =========================
-   Attribute
+   Ground Buffer
+========================= */
+
+const groundPositionBuffer =
+    createBuffer(
+        groundPositions
+    );
+
+const groundNormalBuffer =
+    createBuffer(
+        groundNormals
+    );
+
+
+/* =========================
+   Attribute / Uniform
 ========================= */
 
 const positionLocation =
@@ -341,79 +397,48 @@ const positionLocation =
         "aPosition"
     );
 
-gl.bindBuffer(
-    gl.ARRAY_BUFFER,
-    positionBuffer
-);
-
-gl.enableVertexAttribArray(
-    positionLocation
-);
-
-gl.vertexAttribPointer(
-    positionLocation,
-    3,
-    gl.FLOAT,
-    false,
-    0,
-    0
-);
-
-
 const normalLocation =
     gl.getAttribLocation(
         program,
         "aNormal"
     );
 
-gl.bindBuffer(
-    gl.ARRAY_BUFFER,
-    normalBuffer
-);
+const modelLocation =
+    gl.getUniformLocation(
+        program,
+        "uModel"
+    );
 
-gl.enableVertexAttribArray(
-    normalLocation
-);
+const viewLocation =
+    gl.getUniformLocation(
+        program,
+        "uView"
+    );
 
-gl.vertexAttribPointer(
-    normalLocation,
-    3,
-    gl.FLOAT,
-    false,
-    0,
-    0
-);
+const projectionLocation =
+    gl.getUniformLocation(
+        program,
+        "uProjection"
+    );
 
-gl.bindBuffer(
-    gl.ELEMENT_ARRAY_BUFFER,
-    indexBuffer
-);
+const colorLocation =
+    gl.getUniformLocation(
+        program,
+        "uColor"
+    );
 
 
 /* =========================
-   Matrix 함수
+   Matrix
 ========================= */
 
 function identity() {
+
     return new Float32Array([
         1,0,0,0,
         0,1,0,0,
         0,0,1,0,
         0,0,0,1
-    ]);
-}
-
-
-function rotationY(angle) {
-
-    const c = Math.cos(angle);
-    const s = Math.sin(angle);
-
-    return new Float32Array([
-         c,0,-s,0,
-         0,1, 0,0,
-         s,0, c,0,
-         0,0, 0,1
     ]);
 }
 
@@ -425,6 +450,40 @@ function translation(x,y,z) {
         0,1,0,0,
         0,0,1,0,
         x,y,z,1
+    ]);
+}
+
+
+function rotationY(angle) {
+
+    const c =
+        Math.cos(angle);
+
+    const s =
+        Math.sin(angle);
+
+    return new Float32Array([
+         c,0,-s,0,
+         0,1, 0,0,
+         s,0, c,0,
+         0,0, 0,1
+    ]);
+}
+
+
+function rotationX(angle) {
+
+    const c =
+        Math.cos(angle);
+
+    const s =
+        Math.sin(angle);
+
+    return new Float32Array([
+        1,0,0,0,
+        0,c,s,0,
+        0,-s,c,0,
+        0,0,0,1
     ]);
 }
 
@@ -448,11 +507,9 @@ function perspective(
         f/aspect,0,0,0,
         0,f,0,0,
         0,0,
-        (far+near)*nf,
-        -1,
+        (far+near)*nf,-1,
         0,0,
-        (2*far*near)*nf,
-        0
+        (2*far*near)*nf,0
     ]);
 }
 
@@ -497,30 +554,7 @@ function multiply(a,b) {
 
 
 /* =========================
-   Uniform
-========================= */
-
-const modelLocation =
-    gl.getUniformLocation(
-        program,
-        "uModel"
-    );
-
-const viewLocation =
-    gl.getUniformLocation(
-        program,
-        "uView"
-    );
-
-const projectionLocation =
-    gl.getUniformLocation(
-        program,
-        "uProjection"
-    );
-
-
-/* =========================
-   Camera
+   Projection
 ========================= */
 
 const projection =
@@ -539,15 +573,31 @@ gl.uniformMatrix4fv(
 );
 
 
+/* =========================
+   Camera
+========================= */
+
 /*
-   카메라를 뒤쪽과 위쪽으로 이동
+   뒤에서 바라보면서
+   약간 위에서 아래로 보는 시점
 */
 
-const view =
+const cameraMove =
     translation(
         0,
-        -1.0,
-        -6
+        -1.3,
+        -7
+    );
+
+const cameraTilt =
+    rotationX(
+        -0.25
+    );
+
+const view =
+    multiply(
+        cameraMove,
+        cameraTilt
     );
 
 gl.uniformMatrix4fv(
@@ -567,6 +617,54 @@ gl.enable(
 
 
 /* =========================
+   Attribute 연결 함수
+========================= */
+
+function setAttributes(
+    positionBuffer,
+    normalBuffer
+) {
+
+    gl.bindBuffer(
+        gl.ARRAY_BUFFER,
+        positionBuffer
+    );
+
+    gl.enableVertexAttribArray(
+        positionLocation
+    );
+
+    gl.vertexAttribPointer(
+        positionLocation,
+        3,
+        gl.FLOAT,
+        false,
+        0,
+        0
+    );
+
+
+    gl.bindBuffer(
+        gl.ARRAY_BUFFER,
+        normalBuffer
+    );
+
+    gl.enableVertexAttribArray(
+        normalLocation
+    );
+
+    gl.vertexAttribPointer(
+        normalLocation,
+        3,
+        gl.FLOAT,
+        false,
+        0,
+        0
+    );
+}
+
+
+/* =========================
    Animation
 ========================= */
 
@@ -582,10 +680,10 @@ function render(time) {
     );
 
     gl.clearColor(
+        0.05,
         0.06,
-        0.07,
-        0.10,
-        1.0
+        0.09,
+        1
     );
 
     gl.clear(
@@ -594,30 +692,70 @@ function render(time) {
     );
 
 
-    /*
-       구를 위쪽으로 이동
-       + Y축 회전
-    */
+    /* -------------------------
+       바닥 그리기
+    ------------------------- */
+
+    setAttributes(
+        groundPositionBuffer,
+        groundNormalBuffer
+    );
+
+    gl.uniformMatrix4fv(
+        modelLocation,
+        false,
+        identity()
+    );
+
+    gl.uniform3f(
+        colorLocation,
+        0.32,
+        0.35,
+        0.38
+    );
+
+    gl.drawArrays(
+        gl.TRIANGLES,
+        0,
+        6
+    );
+
+
+    /* -------------------------
+       구 그리기
+    ------------------------- */
+
+    setAttributes(
+        spherePositionBuffer,
+        sphereNormalBuffer
+    );
+
+    gl.bindBuffer(
+        gl.ELEMENT_ARRAY_BUFFER,
+        sphereIndexBuffer
+    );
 
     const moveUp =
         translation(
             0,
-            0.7,
+            1.4,
             0
         );
 
     const rotate =
-        rotationY(time * 0.7);
+        rotationY(
+            time * 0.7
+        );
 
 
     /*
-       현재:
        이동 × 회전
 
-       → 제자리에서 자전
+       구가 현재 위치에서
+       제자리 자전한다.
     */
 
-    const model =
+    const sphereModel =
         multiply(
             moveUp,
             rotate
@@ -627,9 +765,15 @@ function render(time) {
     gl.uniformMatrix4fv(
         modelLocation,
         false,
-        model
+        sphereModel
     );
 
+    gl.uniform3f(
+        colorLocation,
+        0.20,
+        0.55,
+        0.95
+    );
 
     gl.drawElements(
         gl.TRIANGLES,
