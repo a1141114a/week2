@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Week 3 - Task 1</title>
+<title>Week 3 - Task 2</title>
 
 <style>
 body {
     margin: 0;
-    background: #111;
+    background: #050711;
     color: white;
     font-family: Arial, sans-serif;
     text-align: center;
@@ -27,17 +27,16 @@ canvas {
     display: block;
     margin: 0 auto;
     max-width: 100%;
-    background: #111;
 }
 </style>
 </head>
 
 <body>
 
-<h1>Week 3 - Task 1</h1>
-<p>바닥 위에서 회전하는 구</p >
+<h1>Week 3 - Task 2</h1>
+<p>얼음 행성과 용암 행성</p >
 
-<canvas id="glcanvas" width="800" height="600"></canvas>
+<canvas id="glcanvas" width="900" height="600"></canvas>
 
 <script>
 
@@ -64,17 +63,19 @@ uniform mat4 uProjection;
 
 out vec3 vNormal;
 out vec3 vWorldPosition;
+out vec3 vObjectPosition;
 
 void main() {
 
     vec4 worldPosition =
         uModel * vec4(aPosition, 1.0);
 
-    vWorldPosition =
-        worldPosition.xyz;
+    vWorldPosition = worldPosition.xyz;
 
     vNormal =
         mat3(uModel) * aNormal;
+
+    vObjectPosition = aPosition;
 
     gl_Position =
         uProjection *
@@ -94,10 +95,29 @@ precision highp float;
 
 in vec3 vNormal;
 in vec3 vWorldPosition;
+in vec3 vObjectPosition;
 
-uniform vec3 uColor;
+uniform float uTime;
+uniform int uPlanetType;
 
 out vec4 outColor;
+
+
+/* 간단한 패턴 생성 함수 */
+float pattern(vec3 p) {
+
+    float a =
+        sin(p.x * 7.0 + uTime * 0.5);
+
+    float b =
+        sin(p.y * 9.0 - uTime * 0.3);
+
+    float c =
+        sin(p.z * 8.0 + uTime * 0.4);
+
+    return (a + b + c) / 3.0;
+}
+
 
 void main() {
 
@@ -105,18 +125,195 @@ void main() {
         normalize(vNormal);
 
     vec3 L =
-        normalize(
-            vec3(1.0, 1.5, 1.0)
-        );
+        normalize(vec3(1.0, 1.2, 1.0));
+
+
+    /*
+       낮과 밤을 만드는 기본 조명
+    */
 
     float diffuse =
         max(dot(N, L), 0.0);
 
-    float light =
-        0.25 + 0.75 * diffuse;
 
-    vec3 color =
-        uColor * light;
+    vec3 color;
+
+
+    /*
+       0 = 얼음 행성
+    */
+
+    if (uPlanetType == 0) {
+
+        float ice =
+            pattern(vObjectPosition * 1.3);
+
+        float stripes =
+            sin(
+                vObjectPosition.y * 13.0 +
+                pattern(vObjectPosition) * 2.0
+            );
+
+        float iceArea =
+            smoothstep(
+                -0.15,
+                0.35,
+                ice + stripes * 0.25
+            );
+
+
+        vec3 deepIce =
+            vec3(
+                0.03,
+                0.20,
+                0.48
+            );
+
+        vec3 brightIce =
+            vec3(
+                0.65,
+                0.90,
+                1.00
+            );
+
+
+        color =
+            mix(
+                deepIce,
+                brightIce,
+                iceArea
+            );
+
+
+        /*
+           극지방의 흰 얼음
+        */
+
+        float polar =
+            smoothstep(
+                0.55,
+                0.90,
+                abs(vObjectPosition.y)
+            );
+
+
+        color =
+            mix(
+                color,
+                vec3(0.92, 0.97, 1.0),
+                polar
+            );
+    }
+
+
+    /*
+       1 = 용암 행성
+    */
+
+    else {
+
+        float rock =
+            pattern(vObjectPosition * 1.6);
+
+
+        float cracks =
+            abs(
+                sin(
+                    vObjectPosition.x * 9.0 +
+                    sin(
+                        vObjectPosition.y * 8.0 +
+                        uTime * 0.7
+                    ) +
+                    vObjectPosition.z * 7.0
+                )
+            );
+
+
+        float lava =
+            1.0 -
+            smoothstep(
+                0.0,
+                0.18,
+                cracks
+            );
+
+
+        lava *=
+            0.65 +
+            0.35 *
+            sin(
+                uTime * 1.2 +
+                vObjectPosition.y * 6.0
+            );
+
+
+        vec3 darkRock =
+            vec3(
+                0.07,
+                0.025,
+                0.02
+            );
+
+
+        vec3 warmRock =
+            vec3(
+                0.25,
+                0.055,
+                0.015
+            );
+
+
+        color =
+            mix(
+                darkRock,
+                warmRock,
+                rock * 0.5 + 0.5
+            );
+
+
+        vec3 lavaColor =
+            vec3(
+                1.0,
+                0.30,
+                0.015
+            );
+
+
+        color =
+            mix(
+                color,
+                lavaColor,
+                lava
+            );
+    }
+
+
+    /*
+       dot(N, L)을 이용한
+       낮 / 밤 밝기
+    */
+
+    float light =
+        0.15 +
+        0.85 * diffuse;
+
+
+    /*
+       용암은 밤에도 조금 빛남
+    */
+
+    if (uPlanetType == 1) {
+
+        color *=
+            0.35 +
+            0.65 * light;
+    }
+
+    else {
+
+        color *= light;
+    }
+
 
     outColor =
         vec4(color, 1.0);
@@ -133,17 +330,14 @@ function createShader(type, source) {
     const shader =
         gl.createShader(type);
 
-    gl.shaderSource(
-        shader,
-        source
-    );
-
+    gl.shaderSource(shader, source);
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(
         shader,
         gl.COMPILE_STATUS
     )) {
+
         console.error(
             gl.getShaderInfoLog(shader)
         );
@@ -169,16 +363,8 @@ const fragmentShader =
 const program =
     gl.createProgram();
 
-gl.attachShader(
-    program,
-    vertexShader
-);
-
-gl.attachShader(
-    program,
-    fragmentShader
-);
-
+gl.attachShader(program, vertexShader);
+gl.attachShader(program, fragmentShader);
 gl.linkProgram(program);
 
 gl.useProgram(program);
@@ -198,6 +384,7 @@ function createSphere(
     const normals = [];
     const indices = [];
 
+
     for (
         let lat = 0;
         lat <= latitudeBands;
@@ -213,6 +400,7 @@ function createSphere(
 
         const cosTheta =
             Math.cos(theta);
+
 
         for (
             let lon = 0;
@@ -230,6 +418,7 @@ function createSphere(
             const cosPhi =
                 Math.cos(phi);
 
+
             const x =
                 cosPhi * sinTheta;
 
@@ -238,6 +427,7 @@ function createSphere(
 
             const z =
                 sinPhi * sinTheta;
+
 
             positions.push(
                 radius * x,
@@ -276,6 +466,7 @@ function createSphere(
                 longitudeBands +
                 1;
 
+
             indices.push(
                 first,
                 second,
@@ -300,35 +491,7 @@ function createSphere(
 
 
 /* =========================
-   바닥 생성
-========================= */
-
-const groundPositions = [
-
-    -4, 0, -4,
-     4, 0, -4,
-    -4, 0,  4,
-
-    -4, 0,  4,
-     4, 0, -4,
-     4, 0,  4
-];
-
-
-const groundNormals = [
-
-    0, 1, 0,
-    0, 1, 0,
-    0, 1, 0,
-
-    0, 1, 0,
-    0, 1, 0,
-    0, 1, 0
-];
-
-
-/* =========================
-   Buffer 함수
+   Buffer
 ========================= */
 
 function createBuffer(data) {
@@ -351,15 +514,11 @@ function createBuffer(data) {
 }
 
 
-/* =========================
-   Sphere Buffer
-========================= */
-
 const sphere =
     createSphere(
-        1,
-        32,
-        32
+        1.35,
+        40,
+        40
     );
 
 
@@ -392,22 +551,6 @@ gl.bufferData(
     ),
     gl.STATIC_DRAW
 );
-
-
-/* =========================
-   Ground Buffer
-========================= */
-
-const groundPositionBuffer =
-    createBuffer(
-        groundPositions
-    );
-
-
-const groundNormalBuffer =
-    createBuffer(
-        groundNormals
-    );
 
 
 /* =========================
@@ -449,29 +592,23 @@ const projectionLocation =
     );
 
 
-const colorLocation =
+const timeLocation =
     gl.getUniformLocation(
         program,
-        "uColor"
+        "uTime"
+    );
+
+
+const planetTypeLocation =
+    gl.getUniformLocation(
+        program,
+        "uPlanetType"
     );
 
 
 /* =========================
    Matrix
 ========================= */
-
-function identity() {
-
-    return new Float32Array([
-
-        1,0,0,0,
-        0,1,0,0,
-        0,0,1,0,
-        0,0,0,1
-
-    ]);
-}
-
 
 function translation(x, y, z) {
 
@@ -488,11 +625,8 @@ function translation(x, y, z) {
 
 function rotationY(angle) {
 
-    const c =
-        Math.cos(angle);
-
-    const s =
-        Math.sin(angle);
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
 
 
     return new Float32Array([
@@ -508,11 +642,8 @@ function rotationY(angle) {
 
 function rotationX(angle) {
 
-    const c =
-        Math.cos(angle);
-
-    const s =
-        Math.sin(angle);
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
 
 
     return new Float32Array([
@@ -597,7 +728,7 @@ function multiply(a, b) {
 
 
 /* =========================
-   Projection
+   Camera / Projection
 ========================= */
 
 const projection =
@@ -617,21 +748,17 @@ gl.uniformMatrix4fv(
 );
 
 
-/* =========================
-   Camera
-========================= */
-
 const cameraMove =
     translation(
         0,
-        -1.3,
-        -7
+        0,
+        -8
     );
 
 
 const cameraTilt =
     rotationX(
-        -0.25
+        -0.05
     );
 
 
@@ -659,17 +786,14 @@ gl.enable(
 
 
 /* =========================
-   Attribute 연결 함수
+   Attribute 연결
 ========================= */
 
-function setAttributes(
-    positionBuffer,
-    normalBuffer
-) {
+function setSphereAttributes() {
 
     gl.bindBuffer(
         gl.ARRAY_BUFFER,
-        positionBuffer
+        spherePositionBuffer
     );
 
 
@@ -690,7 +814,7 @@ function setAttributes(
 
     gl.bindBuffer(
         gl.ARRAY_BUFFER,
-        normalBuffer
+        sphereNormalBuffer
     );
 
 
@@ -705,6 +829,66 @@ function setAttributes(
         gl.FLOAT,
         false,
         0,
+        0
+    );
+
+
+    gl.bindBuffer(
+        gl.ELEMENT_ARRAY_BUFFER,
+        sphereIndexBuffer
+    );
+}
+
+
+/* =========================
+   행성 그리기
+========================= */
+
+function drawPlanet(
+    x,
+    type,
+    time,
+    speed
+) {
+
+    const move =
+        translation(
+            x,
+            0,
+            0
+        );
+
+
+    const rotate =
+        rotationY(
+            time * speed
+        );
+
+
+    const model =
+        multiply(
+            move,
+            rotate
+        );
+
+
+    gl.uniformMatrix4fv(
+        modelLocation,
+        false,
+        model
+    );
+
+
+    gl.uniform1i(
+        planetTypeLocation,
+        type
+    );
+
+
+    gl.drawElements(
+        gl.TRIANGLES,
+        sphere.indices.length,
+        gl.UNSIGNED_SHORT,
         0
     );
 }
@@ -728,9 +912,9 @@ function render(time) {
 
 
     gl.clearColor(
-        0.05,
-        0.06,
-        0.09,
+        0.01,
+        0.015,
+        0.04,
         1
     );
 
@@ -741,111 +925,36 @@ function render(time) {
     );
 
 
-    /* =========================
-       바닥
-    ========================= */
-
-    setAttributes(
-        groundPositionBuffer,
-        groundNormalBuffer
+    gl.uniform1f(
+        timeLocation,
+        time
     );
 
 
-    gl.uniformMatrix4fv(
-        modelLocation,
-        false,
-        identity()
-    );
+    setSphereAttributes();
 
 
-    gl.uniform3f(
-        colorLocation,
-        0.32,
-        0.35,
-        0.38
-    );
+    /*
+       왼쪽 : 얼음 행성
+    */
 
-
-    gl.drawArrays(
-        gl.TRIANGLES,
+    drawPlanet(
+        -2.0,
         0,
-        6
-    );
-
-
-    /* =========================
-       구
-    ========================= */
-
-    setAttributes(
-        spherePositionBuffer,
-        sphereNormalBuffer
-    );
-
-
-    gl.bindBuffer(
-        gl.ELEMENT_ARRAY_BUFFER,
-        sphereIndexBuffer
+        time,
+        0.25
     );
 
 
     /*
-       구의 중심을 Y = 3.0 위치로 이동
-       → 바닥 위에 떠 있는 상태
+       오른쪽 : 용암 행성
     */
 
-    const moveUp =
-        translation(
-            0,
-            3.0,
-            0
-        );
-
-
-    /*
-       Y축을 중심으로 천천히 회전
-    */
-
-    const rotate =
-        rotationY(
-            time * 0.7
-        );
-
-
-    /*
-       이동 × 회전
-
-       현재 위치를 유지하면서
-       제자리에서 자전
-    */
-
-    const sphereModel =
-        multiply(
-            moveUp,
-            rotate
-        );
-
-
-    gl.uniformMatrix4fv(
-        modelLocation,
-        false,
-        sphereModel
-    );
-
-
-    gl.uniform3f(
-        colorLocation,
-        0.20,
-        0.55,
-        0.95
-    );
-
-
-    gl.drawElements(
-        gl.TRIANGLES,
-        sphere.indices.length,
-        gl.UNSIGNED_SHORT,
-        0
+    drawPlanet(
+        2.0,
+        1,
+        time,
+        0.35
     );
 
 
