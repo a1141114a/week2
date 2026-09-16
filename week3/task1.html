@@ -735,32 +735,31 @@ function render(time) {
         sphereIndexBuffer
     );
 
-    const moveUp =
-        translation(
-            0,
-            3.0,
-            0
-        );
+  const moveUp =
+    translation(
+        2.0,
+        3.0,
+        0
+    );
 
-    const rotate =
-        rotationY(
-            time * 0.7
-        );
+const rotate =
+    rotationY(
+        time * 0.7
+    );
 
 
-    /*
-       이동 × 회전
+/*
+   회전 × 이동
 
-       구가 현재 위치에서
-       제자리 자전한다.
-    */
+   행렬의 곱셈 순서를 바꾸면
+   구가 원점을 중심으로 공전한다.
+*/
 
-   const sphereModel =
+const sphereModel =
     multiply(
         rotate,
         moveUp
     );
-
 
     gl.uniformMatrix4fv(
         modelLocation,
