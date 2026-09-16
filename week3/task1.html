@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Week 3 - Task 1</title>
 
 <style>
@@ -39,12 +40,14 @@ canvas {
 <canvas id="glcanvas" width="800" height="600"></canvas>
 
 <script>
+
 const canvas = document.getElementById("glcanvas");
 const gl = canvas.getContext("webgl2");
 
 if (!gl) {
     alert("WebGL2를 지원하지 않는 브라우저입니다.");
 }
+
 
 /* =========================
    Vertex Shader
@@ -63,10 +66,15 @@ out vec3 vNormal;
 out vec3 vWorldPosition;
 
 void main() {
-    vec4 worldPosition = uModel * vec4(aPosition, 1.0);
 
-    vWorldPosition = worldPosition.xyz;
-    vNormal = mat3(uModel) * aNormal;
+    vec4 worldPosition =
+        uModel * vec4(aPosition, 1.0);
+
+    vWorldPosition =
+        worldPosition.xyz;
+
+    vNormal =
+        mat3(uModel) * aNormal;
 
     gl_Position =
         uProjection *
@@ -93,11 +101,13 @@ out vec4 outColor;
 
 void main() {
 
-    vec3 N = normalize(vNormal);
+    vec3 N =
+        normalize(vNormal);
 
-    vec3 L = normalize(
-        vec3(1.0, 1.5, 1.0)
-    );
+    vec3 L =
+        normalize(
+            vec3(1.0, 1.5, 1.0)
+        );
 
     float diffuse =
         max(dot(N, L), 0.0);
@@ -108,14 +118,14 @@ void main() {
     vec3 color =
         uColor * light;
 
-   outColor =
-    vec4(color, 1.0);
+    outColor =
+        vec4(color, 1.0);
 }
 `;
 
 
 /* =========================
-   Shader
+   Shader 생성
 ========================= */
 
 function createShader(type, source) {
@@ -142,6 +152,7 @@ function createShader(type, source) {
     return shader;
 }
 
+
 const vertexShader =
     createShader(
         gl.VERTEX_SHADER,
@@ -153,6 +164,7 @@ const fragmentShader =
         gl.FRAGMENT_SHADER,
         fragmentShaderSource
     );
+
 
 const program =
     gl.createProgram();
@@ -241,6 +253,7 @@ function createSphere(
         }
     }
 
+
     for (
         let lat = 0;
         lat < latitudeBands;
@@ -277,6 +290,7 @@ function createSphere(
         }
     }
 
+
     return {
         positions,
         normals,
@@ -290,6 +304,7 @@ function createSphere(
 ========================= */
 
 const groundPositions = [
+
     -4, 0, -4,
      4, 0, -4,
     -4, 0,  4,
@@ -299,14 +314,16 @@ const groundPositions = [
      4, 0,  4
 ];
 
-const groundNormals = [
-    0,1,0,
-    0,1,0,
-    0,1,0,
 
-    0,1,0,
-    0,1,0,
-    0,1,0
+const groundNormals = [
+
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0,
+
+    0, 1, 0,
+    0, 1, 0,
+    0, 1, 0
 ];
 
 
@@ -345,23 +362,28 @@ const sphere =
         32
     );
 
+
 const spherePositionBuffer =
     createBuffer(
         sphere.positions
     );
+
 
 const sphereNormalBuffer =
     createBuffer(
         sphere.normals
     );
 
+
 const sphereIndexBuffer =
     gl.createBuffer();
+
 
 gl.bindBuffer(
     gl.ELEMENT_ARRAY_BUFFER,
     sphereIndexBuffer
 );
+
 
 gl.bufferData(
     gl.ELEMENT_ARRAY_BUFFER,
@@ -381,6 +403,7 @@ const groundPositionBuffer =
         groundPositions
     );
 
+
 const groundNormalBuffer =
     createBuffer(
         groundNormals
@@ -397,11 +420,13 @@ const positionLocation =
         "aPosition"
     );
 
+
 const normalLocation =
     gl.getAttribLocation(
         program,
         "aNormal"
     );
+
 
 const modelLocation =
     gl.getUniformLocation(
@@ -409,17 +434,20 @@ const modelLocation =
         "uModel"
     );
 
+
 const viewLocation =
     gl.getUniformLocation(
         program,
         "uView"
     );
 
+
 const projectionLocation =
     gl.getUniformLocation(
         program,
         "uProjection"
     );
+
 
 const colorLocation =
     gl.getUniformLocation(
@@ -435,21 +463,25 @@ const colorLocation =
 function identity() {
 
     return new Float32Array([
+
         1,0,0,0,
         0,1,0,0,
         0,0,1,0,
         0,0,0,1
+
     ]);
 }
 
 
-function translation(x,y,z) {
+function translation(x, y, z) {
 
     return new Float32Array([
+
         1,0,0,0,
         0,1,0,0,
         0,0,1,0,
         x,y,z,1
+
     ]);
 }
 
@@ -462,11 +494,14 @@ function rotationY(angle) {
     const s =
         Math.sin(angle);
 
+
     return new Float32Array([
+
          c,0,-s,0,
          0,1, 0,0,
          s,0, c,0,
          0,0, 0,1
+
     ]);
 }
 
@@ -479,11 +514,14 @@ function rotationX(angle) {
     const s =
         Math.sin(angle);
 
+
     return new Float32Array([
+
         1,0,0,0,
         0,c,s,0,
         0,-s,c,0,
         0,0,0,1
+
     ]);
 }
 
@@ -503,21 +541,23 @@ function perspective(
         1 /
         (near - far);
 
+
     return new Float32Array([
+
         f/aspect,0,0,0,
         0,f,0,0,
-        0,0,
-        (far+near)*nf,-1,
-        0,0,
-        (2*far*near)*nf,0
+        0,0,(far+near)*nf,-1,
+        0,0,(2*far*near)*nf,0
+
     ]);
 }
 
 
-function multiply(a,b) {
+function multiply(a, b) {
 
     const out =
         new Float32Array(16);
+
 
     for (
         let column = 0;
@@ -533,6 +573,7 @@ function multiply(a,b) {
 
             let sum = 0;
 
+
             for (
                 let i = 0;
                 i < 4;
@@ -544,10 +585,12 @@ function multiply(a,b) {
                     b[column*4 + i];
             }
 
+
             out[column*4 + row] =
                 sum;
         }
     }
+
 
     return out;
 }
@@ -566,6 +609,7 @@ const projection =
         100
     );
 
+
 gl.uniformMatrix4fv(
     projectionLocation,
     false,
@@ -577,11 +621,6 @@ gl.uniformMatrix4fv(
    Camera
 ========================= */
 
-/*
-   뒤에서 바라보면서
-   약간 위에서 아래로 보는 시점
-*/
-
 const cameraMove =
     translation(
         0,
@@ -589,10 +628,12 @@ const cameraMove =
         -7
     );
 
+
 const cameraTilt =
     rotationX(
         -0.25
     );
+
 
 const view =
     multiply(
@@ -600,14 +641,12 @@ const view =
         cameraTilt
     );
 
+
 gl.uniformMatrix4fv(
     viewLocation,
     false,
     view
 );
-
-
-
 
 
 /* =========================
@@ -624,9 +663,11 @@ function setAttributes(
         positionBuffer
     );
 
+
     gl.enableVertexAttribArray(
         positionLocation
     );
+
 
     gl.vertexAttribPointer(
         positionLocation,
@@ -643,14 +684,16 @@ function setAttributes(
         normalBuffer
     );
 
+
     gl.enableVertexAttribArray(
         normalLocation
     );
 
+
     gl.vertexAttribPointer(
         normalLocation,
         3,
-        gl.FLOAT,f
+        gl.FLOAT,
         false,
         0,
         0
@@ -661,10 +704,11 @@ function setAttributes(
 /* =========================
    Animation
 ========================= */
-gl.enable(gl.DEPTH_TEST);
+
 function render(time) {
 
     time *= 0.001;
+
 
     gl.viewport(
         0,
@@ -673,6 +717,7 @@ function render(time) {
         canvas.height
     );
 
+
     gl.clearColor(
         0.05,
         0.06,
@@ -680,26 +725,29 @@ function render(time) {
         1
     );
 
+
     gl.clear(
         gl.COLOR_BUFFER_BIT |
         gl.DEPTH_BUFFER_BIT
     );
 
 
-    /* -------------------------
-       바닥 그리기
-    ------------------------- */
+    /* =========================
+       바닥
+    ========================= */
 
     setAttributes(
         groundPositionBuffer,
         groundNormalBuffer
     );
 
+
     gl.uniformMatrix4fv(
         modelLocation,
         false,
         identity()
     );
+
 
     gl.uniform3f(
         colorLocation,
@@ -708,44 +756,50 @@ function render(time) {
         0.38
     );
 
+
     gl.drawArrays(
         gl.TRIANGLES,
         0,
         6
     );
 
-f
-    /* -------------------------
-       구 그리기
-    ------------------------- */
+
+    /* =========================
+       구
+    ========================= */
 
     setAttributes(
         spherePositionBuffer,
         sphereNormalBuffer
     );
 
+
     gl.bindBuffer(
         gl.ELEMENT_ARRAY_BUFFER,
         sphereIndexBuffer
     );
 
- const moveUp =
-    translation(
-        0,
-        3.0,
-        0
-    );
 
-const rotate =
-    rotationY(
-        time * 0.7
-    );
+    const moveUp =
+        translation(
+            0,
+            3.0,
+            0
+        );
 
-const sphereModel =
-    multiply(
-        moveUp,
-        rotate
-    );
+
+    const rotate =
+        rotationY(
+            time * 0.7
+        );
+
+
+    const sphereModel =
+        multiply(
+            moveUp,
+            rotate
+        );
+
 
     gl.uniformMatrix4fv(
         modelLocation,
@@ -753,12 +807,14 @@ const sphereModel =
         sphereModel
     );
 
+
     gl.uniform3f(
         colorLocation,
         0.20,
         0.55,
         0.95
     );
+
 
     gl.drawElements(
         gl.TRIANGLES,
@@ -772,6 +828,7 @@ const sphereModel =
         render
     );
 }
+
 
 requestAnimationFrame(
     render
