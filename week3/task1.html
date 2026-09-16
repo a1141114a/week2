@@ -755,11 +755,11 @@ function render(time) {
        제자리 자전한다.
     */
 
-    const sphereModel =
-        multiply(
-            moveUp,
-            rotate
-        );
+   const sphereModel =
+    multiply(
+        rotate,
+        moveUp
+    );
 
 
     gl.uniformMatrix4fv(
