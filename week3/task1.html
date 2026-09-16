@@ -1,1 +1,654 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Week 3 - Task 1</title>
 
+    <style>
+        body {
+            margin: 0;
+            background: #111;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        h1 {
+            margin: 20px 0 10px;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background: #222;
+            max-width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>Week 3 - Task 1</h1>
+<p>회전하는 구와 바닥</p >
+
+<canvas id="glcanvas" width="800" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById("glcanvas");
+const gl = canvas.getContext("webgl2");
+
+if (!gl) {
+    alert("WebGL2를 지원하지 않는 브라우저입니다.");
+}
+
+/* =========================
+   Vertex Shader
+========================= */
+
+const vertexShaderSource = `#version 300 es
+
+in vec3 aPosition;
+in vec3 aNormal;
+
+uniform mat4 uModel;
+uniform mat4 uView;
+uniform mat4 uProjection;
+
+out vec3 vNormal;
+
+void main() {
+    vec4 worldPosition = uModel * vec4(aPosition, 1.0);
+
+    gl_Position =
+        uProjection *
+        uView *
+        worldPosition;
+
+    vNormal = mat3(uModel) * aNormal;
+}
+`;
+
+
+/* =========================
+   Fragment Shader
+========================= */
+
+const fragmentShaderSource = `#version 300 es
+
+precision highp float;
+
+in vec3 vNormal;
+
+out vec4 outColor;
+
+void main() {
+    vec3 N = normalize(vNormal);
+
+    vec3 L = normalize(vec3(
+        1.0,
+        1.0,
+        1.0
+    ));
+
+    float light =
+        max(dot(N, L), 0.0);
+
+    vec3 baseColor =
+        vec3(0.25, 0.55, 0.95);
+
+    vec3 color =
+        baseColor * (0.25 + 0.75 * light);
+
+    outColor =
+        vec4(color, 1.0);
+}
+`;
+
+
+/* =========================
+   Shader 생성
+========================= */
+
+function createShader(type, source) {
+    const shader = gl.createShader(type);
+
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+
+    if (!gl.getShaderParameter(
+        shader,
+        gl.COMPILE_STATUS
+    )) {
+        console.error(
+            gl.getShaderInfoLog(shader)
+        );
+    }
+
+    return shader;
+}
+
+const vertexShader =
+    createShader(
+        gl.VERTEX_SHADER,
+        vertexShaderSource
+    );
+
+const fragmentShader =
+    createShader(
+        gl.FRAGMENT_SHADER,
+        fragmentShaderSource
+    );
+
+const program = gl.createProgram();
+
+gl.attachShader(
+    program,
+    vertexShader
+);
+
+gl.attachShader(
+    program,
+    fragmentShader
+);
+
+gl.linkProgram(program);
+gl.useProgram(program);
+
+
+/* =========================
+   구 만들기
+========================= */
+
+function createSphere(
+    radius,
+    latitudeBands,
+    longitudeBands
+) {
+
+    const positions = [];
+    const normals = [];
+    const indices = [];
+
+    for (
+        let lat = 0;
+        lat <= latitudeBands;
+        lat++
+    ) {
+
+        const theta =
+            lat * Math.PI /
+            latitudeBands;
+
+        const sinTheta =
+            Math.sin(theta);
+
+        const cosTheta =
+            Math.cos(theta);
+
+        for (
+            let lon = 0;
+            lon <= longitudeBands;
+            lon++
+        ) {
+
+            const phi =
+                lon * 2 * Math.PI /
+                longitudeBands;
+
+            const sinPhi =
+                Math.sin(phi);
+
+            const cosPhi =
+                Math.cos(phi);
+
+            const x =
+                cosPhi * sinTheta;
+
+            const y =
+                cosTheta;
+
+            const z =
+                sinPhi * sinTheta;
+
+            normals.push(
+                x,
+                y,
+                z
+            );
+
+            positions.push(
+                radius * x,
+                radius * y,
+                radius * z
+            );
+        }
+    }
+
+    for (
+        let lat = 0;
+        lat < latitudeBands;
+        lat++
+    ) {
+
+        for (
+            let lon = 0;
+            lon < longitudeBands;
+            lon++
+        ) {
+
+            const first =
+                lat *
+                (longitudeBands + 1) +
+                lon;
+
+            const second =
+                first +
+                longitudeBands +
+                1;
+
+            indices.push(
+                first,
+                second,
+                first + 1
+            );
+
+            indices.push(
+                second,
+                second + 1,
+                first + 1
+            );
+        }
+    }
+
+    return {
+        positions,
+        normals,
+        indices
+    };
+}
+
+const sphere =
+    createSphere(
+        1,
+        32,
+        32
+    );
+
+
+/* =========================
+   Buffer
+========================= */
+
+const positionBuffer =
+    gl.createBuffer();
+
+gl.bindBuffer(
+    gl.ARRAY_BUFFER,
+    positionBuffer
+);
+
+gl.bufferData(
+    gl.ARRAY_BUFFER,
+    new Float32Array(
+        sphere.positions
+    ),
+    gl.STATIC_DRAW
+);
+
+
+const normalBuffer =
+    gl.createBuffer();
+
+gl.bindBuffer(
+    gl.ARRAY_BUFFER,
+    normalBuffer
+);
+
+gl.bufferData(
+    gl.ARRAY_BUFFER,
+    new Float32Array(
+        sphere.normals
+    ),
+    gl.STATIC_DRAW
+);
+
+
+const indexBuffer =
+    gl.createBuffer();
+
+gl.bindBuffer(
+    gl.ELEMENT_ARRAY_BUFFER,
+    indexBuffer
+);
+
+gl.bufferData(
+    gl.ELEMENT_ARRAY_BUFFER,
+    new Uint16Array(
+        sphere.indices
+    ),
+    gl.STATIC_DRAW
+);
+
+
+/* =========================
+   Attribute
+========================= */
+
+const positionLocation =
+    gl.getAttribLocation(
+        program,
+        "aPosition"
+    );
+
+gl.bindBuffer(
+    gl.ARRAY_BUFFER,
+    positionBuffer
+);
+
+gl.enableVertexAttribArray(
+    positionLocation
+);
+
+gl.vertexAttribPointer(
+    positionLocation,
+    3,
+    gl.FLOAT,
+    false,
+    0,
+    0
+);
+
+
+const normalLocation =
+    gl.getAttribLocation(
+        program,
+        "aNormal"
+    );
+
+gl.bindBuffer(
+    gl.ARRAY_BUFFER,
+    normalBuffer
+);
+
+gl.enableVertexAttribArray(
+    normalLocation
+);
+
+gl.vertexAttribPointer(
+    normalLocation,
+    3,
+    gl.FLOAT,
+    false,
+    0,
+    0
+);
+
+gl.bindBuffer(
+    gl.ELEMENT_ARRAY_BUFFER,
+    indexBuffer
+);
+
+
+/* =========================
+   Matrix 함수
+========================= */
+
+function identity() {
+    return new Float32Array([
+        1,0,0,0,
+        0,1,0,0,
+        0,0,1,0,
+        0,0,0,1
+    ]);
+}
+
+
+function rotationY(angle) {
+
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+
+    return new Float32Array([
+         c,0,-s,0,
+         0,1, 0,0,
+         s,0, c,0,
+         0,0, 0,1
+    ]);
+}
+
+
+function translation(x,y,z) {
+
+    return new Float32Array([
+        1,0,0,0,
+        0,1,0,0,
+        0,0,1,0,
+        x,y,z,1
+    ]);
+}
+
+
+function perspective(
+    fov,
+    aspect,
+    near,
+    far
+) {
+
+    const f =
+        1 /
+        Math.tan(fov / 2);
+
+    const nf =
+        1 /
+        (near - far);
+
+    return new Float32Array([
+        f/aspect,0,0,0,
+        0,f,0,0,
+        0,0,
+        (far+near)*nf,
+        -1,
+        0,0,
+        (2*far*near)*nf,
+        0
+    ]);
+}
+
+
+function multiply(a,b) {
+
+    const out =
+        new Float32Array(16);
+
+    for (
+        let column = 0;
+        column < 4;
+        column++
+    ) {
+
+        for (
+            let row = 0;
+            row < 4;
+            row++
+        ) {
+
+            let sum = 0;
+
+            for (
+                let i = 0;
+                i < 4;
+                i++
+            ) {
+
+                sum +=
+                    a[i*4 + row] *
+                    b[column*4 + i];
+            }
+
+            out[column*4 + row] =
+                sum;
+        }
+    }
+
+    return out;
+}
+
+
+/* =========================
+   Uniform
+========================= */
+
+const modelLocation =
+    gl.getUniformLocation(
+        program,
+        "uModel"
+    );
+
+const viewLocation =
+    gl.getUniformLocation(
+        program,
+        "uView"
+    );
+
+const projectionLocation =
+    gl.getUniformLocation(
+        program,
+        "uProjection"
+    );
+
+
+/* =========================
+   Camera
+========================= */
+
+const projection =
+    perspective(
+        Math.PI / 4,
+        canvas.width /
+        canvas.height,
+        0.1,
+        100
+    );
+
+gl.uniformMatrix4fv(
+    projectionLocation,
+    false,
+    projection
+);
+
+
+/*
+   카메라를 뒤쪽과 위쪽으로 이동
+*/
+
+const view =
+    translation(
+        0,
+        -1.0,
+        -6
+    );
+
+gl.uniformMatrix4fv(
+    viewLocation,
+    false,
+    view
+);
+
+
+/* =========================
+   Depth Test
+========================= */
+
+gl.enable(
+    gl.DEPTH_TEST
+);
+
+
+/* =========================
+   Animation
+========================= */
+
+function render(time) {
+
+    time *= 0.001;
+
+    gl.viewport(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    gl.clearColor(
+        0.06,
+        0.07,
+        0.10,
+        1.0
+    );
+
+    gl.clear(
+        gl.COLOR_BUFFER_BIT |
+        gl.DEPTH_BUFFER_BIT
+    );
+
+
+    /*
+       구를 위쪽으로 이동
+       + Y축 회전
+    */
+
+    const moveUp =
+        translation(
+            0,
+            0.7,
+            0
+        );
+
+    const rotate =
+        rotationY(time * 0.7);
+
+
+    /*
+       현재:
+       이동 × 회전
+
+       → 제자리에서 자전
+    */
+
+    const model =
+        multiply(
+            moveUp,
+            rotate
+        );
+
+
+    gl.uniformMatrix4fv(
+        modelLocation,
+        false,
+        model
+    );
+
+
+    gl.drawElements(
+        gl.TRIANGLES,
+        sphere.indices.length,
+        gl.UNSIGNED_SHORT,
+        0
+    );
+
+
+    requestAnimationFrame(
+        render
+    );
+}
+
+requestAnimationFrame(
+    render
+);
+
+</script>
+
+</body>
+</html>
