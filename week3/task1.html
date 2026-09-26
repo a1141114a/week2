@@ -35,7 +35,7 @@ canvas {
 <body>
 
 <h1>Week 3 - Task 1</h1>
-<p>바닥 위에서 회전하는 구</p >
+<p>바닥 위에 떠서 회전하는 구</p >
 
 <canvas id="glcanvas" width="800" height="600"></canvas>
 
@@ -181,7 +181,25 @@ gl.attachShader(
 
 gl.linkProgram(program);
 
+if (!gl.getProgramParameter(
+    program,
+    gl.LINK_STATUS
+)) {
+    console.error(
+        gl.getProgramInfoLog(program)
+    );
+}
+
 gl.useProgram(program);
+
+
+/* =========================
+   Depth Test
+========================= */
+
+gl.enable(gl.DEPTH_TEST);
+
+gl.depthFunc(gl.LEQUAL);
 
 
 /* =========================
@@ -780,6 +798,7 @@ function render(time) {
     );
 
 
+    // 구를 바닥 위로 띄움
     const moveUp =
         translation(
             0,
@@ -788,12 +807,14 @@ function render(time) {
         );
 
 
+    // Y축을 중심으로 계속 회전
     const rotate =
         rotationY(
             time * 0.7
         );
 
 
+    // 이동 후 자신의 중심을 기준으로 회전
     const sphereModel =
         multiply(
             moveUp,
