@@ -1,187 +1,277 @@
 /* Week 4 - Improved Observation Interface
-   P1~P6 quick navigation + O1/O2 orthographic comparison views
+   빠른 위치 탐색과 비교 관찰 기능
 */
-
 (() => {
+  'use strict';
+
   const viewer = window.InspectionViewer;
-  if (!viewer) return;
-
   const ui = document.querySelector('#student-ui');
-  if (!ui) return;
 
-  const model = viewer.model;
+  if (!viewer || !ui) return;
+
   const controls = viewer.controls;
+  const model = viewer.model;
 
-  // ---------- quaternion helpers ----------
-  function normalize(v) {
-    const n = Math.hypot(...v) || 1;
-    return v.map(x => x / n);
+  // -----------------------------
+  // UI
+  // -----------------------------
+  ui.innerHTML = `
+    <div style="
+      margin-top:16px;
+      padding:12px;
+      border:1px solid #c8d0d8;
+      border-radius:8px;
+      background:#f7f9fb;
+    ">
+      <strong style="display:block;margin-bottom:10px;">
+        빠른 관찰
+      </strong>
+
+      <div style="margin-bottom:10px;">
+        <div style="font-size:13px;margin-bottom:6px;">
+          관찰 지점
+        </div>
+
+        <div style="
+          display:grid;
+          grid-template-columns:repeat(3,1fr);
+          gap:6px;
+        ">
+          <button class="btn quick-poi" data-id="P1">P1</button>
+          <button class="btn quick-poi" data-id="P2">P2</button>
+          <button class="btn quick-poi" data-id="P3">P3</button>
+          <button class="btn quick-poi" data-id="P4">P4</button>
+          <button class="btn quick-poi" data-id="P5">P5</button>
+          <button class="btn quick-poi" data-id="P6">P6</button>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:13px;margin-bottom:6px;">
+          비교 관찰
+        </div>
+
+        <div style="
+          display:grid;
+          grid-template-columns:1fr 1fr;
+          gap:6px;
+        ">
+          <button class="btn" id="quick-o1">
+            O1 정면
+          </button>
+
+          <button class="btn" id="quick-o2">
+            O2 오른쪽
+          </button>
+
+          <button class="btn" id="quick-home"
+            style="grid-column:1 / 3;">
+            전체 보기
+          </button>
+        </div>
+      </div>
+
+      <p style="
+        margin:10px 0 0;
+        font-size:12px;
+        line-height:1.5;
+      ">
+        관찰 지점을 선택하면 해당 위치로 빠르게 이동합니다.
+        이동 후 마우스로 시점을 추가 조절할 수 있습니다.
+      </p >
+    </div>
+  `;
+
+  // -----------------------------
+  // Quaternion helpers
+  // -----------------------------
+  function normalize(q) {
+    const n = Math.hypot(...q) || 1;
+    return q.map(v => v / n);
   }
 
-  function quatFromEuler(pitch, yaw) {
-    const sx = Math.sin(pitch / 2);
-    const cx = Math.cos(pitch / 2);
-    const sy = Math.sin(yaw / 2);
-    const cy = Math.cos(yaw / 2);
+  function multiply(a, b) {
+    return [
+      a[3] * b[0] + a[0] * b[3] +
+        a[1] * b[2] - a[2] * b[1],
 
-    // Same general rotation convention as the provided controls.
-    return normalize([
-      sx * cy,
-      cx * sy,
-      -sx * sy,
-      cx * cy
-    ]);
+      a[3] * b[1] - a[0] * b[2] +
+        a[1] * b[3] + a[2] * b[0],
+
+      a[3] * b[2] + a[0] * b[1] -
+        a[1] * b[0] + a[2] * b[3],
+
+      a[3] * b[3] - a[0] * b[0] -
+        a[1] * b[1] - a[2] * b[2]
+    ];
   }
 
-  // ---------- P1~P6 camera presets ----------
-  // yaw here controls the camera's horizontal viewing direction.
-  // distance is intentionally fairly close so that small labels are readable.
-  const poiViews = {
-    P1: { distance: 4.0, pitch: 0.00, yaw: 0.00 },
-    P2: { distance: 3.0, pitch: 0.00, yaw: 0.00 },
-    P3: { distance: 2.5, pitch: 0.00, yaw: 0.00 },
-    P4: { distance: 3.0, pitch: -0.15, yaw: 0.00 },
-    P5: { distance: 3.2, pitch: 0.00, yaw: Math.PI },
-    P6: { distance: 2.8, pitch: 0.00, yaw: 0.00 }
+  function cameraRotation(pitch, yaw) {
+    const qYaw = [
+      0,
+      Math.sin(yaw / 2),
+      0,
+      Math.cos(yaw / 2)
+    ];
+
+    const qPitch = [
+      Math.sin(pitch / 2),
+      0,
+      0,
+      Math.cos(pitch / 2)
+    ];
+
+    return normalize(multiply(qYaw, qPitch));
+  }
+
+  // -----------------------------
+  // P1 ~ P6 presets
+  // -----------------------------
+  const presets = {
+    P1: {
+      distance: 3.2,
+      pitch: 0,
+      yaw: 0
+    },
+
+    P2: {
+      distance: 2.6,
+      pitch: 0,
+      yaw: 0
+    },
+
+    P3: {
+      distance: 2.0,
+      pitch: 0,
+      yaw: 0
+    },
+
+    P4: {
+      distance: 2.7,
+      pitch: -0.15,
+      yaw: 0
+    },
+
+    P5: {
+      distance: 2.8,
+      pitch: 0,
+      yaw: Math.PI
+    },
+
+    P6: {
+      distance: 2.5,
+      pitch: 0,
+      yaw: 0
+    }
   };
+
+  let mode = 'normal';
 
   function focusPOI(id) {
     const poi = model.poi.find(p => p.id === id);
-    if (!poi) return;
+    const preset = presets[id];
 
-    const preset = poiViews[id];
+    if (!poi || !preset) return;
+
+    mode = 'normal';
 
     controls.state.target = [...poi.position];
     controls.state.distance = preset.distance;
     controls.state.rotation =
-      quatFromEuler(preset.pitch, preset.yaw);
+      cameraRotation(preset.pitch, preset.yaw);
+
     controls.state.fov = 38;
     controls.state.actions++;
-
-    currentMode = 'normal';
   }
 
-  // ---------- O1 / O2 comparison mode ----------
-  let currentMode = 'normal';
+  // -----------------------------
+  // Buttons
+  // -----------------------------
+  ui.querySelectorAll('.quick-poi').forEach(button => {
+    button.addEventListener('click', () => {
+      focusPOI(button.dataset.id);
+    });
+  });
 
-  function comparisonView(id) {
-    const comparison =
-      model.comparisons.find(c => c.id === id);
+  document.querySelector('#quick-o1')
+    .addEventListener('click', () => {
+      mode = 'O1';
+      controls.state.actions++;
+    });
 
-    if (!comparison) return;
+  document.querySelector('#quick-o2')
+    .addEventListener('click', () => {
+      mode = 'O2';
+      controls.state.actions++;
+    });
 
-    currentMode = id;
-  }
-
-  // ---------- reset ----------
-  function showAll() {
-    currentMode = 'normal';
-
-    if (viewer.hidden) {
+  document.querySelector('#quick-home')
+    .addEventListener('click', () => {
+      mode = 'normal';
       viewer.hidden.clear();
-    }
+      controls.home();
+      controls.state.actions++;
+    });
 
-    controls.home();
-  }
+  // -----------------------------
+  // Rendering
+  // -----------------------------
+  viewer.render = () => {
 
-  // ---------- custom rendering ----------
-  // Normal mode keeps the professor's original interactive camera.
-  // O1/O2 use exact orthographic views.
-  viewer.render = (v) => {
-    const canvas = v.canvas;
+    if (mode === 'O1') {
+      const c =
+        model.comparisons.find(item => item.id === 'O1');
 
-    if (currentMode === 'O1') {
-      const c = model.comparisons.find(x => x.id === 'O1');
-
-      v.drawView({
+      viewer.drawView({
         eye: [
           c.position[0],
           c.position[1],
           c.position[2] + 12
         ],
+
         target: [...c.position],
+
         up: [0, 1, 0],
-        fov: 45,
+
         orthographic: true,
-        halfHeight: 2.2
-      }, [0, 0, canvas.width, canvas.height]);
+
+        halfHeight: 2.3
+      });
 
       return;
     }
 
-    if (currentMode === 'O2') {
-      const c = model.comparisons.find(x => x.id === 'O2');
+    if (mode === 'O2') {
+      const c =
+        model.comparisons.find(item => item.id === 'O2');
 
-      v.drawView({
+      viewer.drawView({
         eye: [
           c.position[0] + 12,
           c.position[1],
           c.position[2]
         ],
+
         target: [...c.position],
+
         up: [0, 1, 0],
-        fov: 45,
+
         orthographic: true,
+
         halfHeight: 2.5
-      }, [0, 0, canvas.width, canvas.height]);
+      });
 
       return;
     }
 
-    const cam = controls.camera();
+    const camera = controls.camera();
 
-    v.drawView({
-      eye: cam.eye,
-      target: cam.target,
-      up: cam.up,
-      fov: controls.state.fov,
-      orthographic: false
-    }, [0, 0, canvas.width, canvas.height]);
+    viewer.drawView({
+      eye: camera.eye,
+      target: camera.target,
+      up: camera.up,
+      fov: controls.state.fov
+    });
   };
 
-  // ---------- UI ----------
-  ui.innerHTML = `
-    <div class="student-panel">
-      <div class="student-title">
-        빠른 관찰
-      </div>
-
-      <div class="student-section">
-        <span class="student-label">관찰 지점</span>
-        <button data-poi="P1">P1</button>
-        <button data-poi="P2">P2</button>
-        <button data-poi="P3">P3</button>
-        <button data-poi="P4">P4</button>
-        <button data-poi="P5">P5</button>
-        <button data-poi="P6">P6</button>
-      </div>
-
-      <div class="student-section">
-        <span class="student-label">비교 관찰</span>
-        <button id="view-o1">O1 정면</button>
-        <button id="view-o2">O2 오른쪽</button>
-        <button id="view-home">전체 보기</button>
-      </div>
-
-      <div class="student-help">
-        버튼으로 관찰 위치를 빠르게 찾은 후
-        마우스로 시점을 추가 조절할 수 있습니다.
-      </div>
-    </div>
-  `;
-
-  ui.querySelectorAll('[data-poi]').forEach(button => {
-    button.addEventListener('click', () => {
-      focusPOI(button.dataset.poi);
-    });
-  });
-
-  ui.querySelector('#view-o1')
-    .addEventListener('click', () => comparisonView('O1'));
-
-  ui.querySelector('#view-o2')
-    .addEventListener('click', () => comparisonView('O2'));
-
-  ui.querySelector('#view-home')
-    .addEventListener('click', showAll);
 })();
