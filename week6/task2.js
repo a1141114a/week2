@@ -63,10 +63,10 @@ float impactRegion(vec3 n){
  for(int i=0;i<18;i++){
   float fi=float(i);float y=1.0-2.0*(fi+0.5)/18.0;
   float a=fi*2.399963;vec3 center=vec3(sqrt(1.0-y*y)*cos(a),y,sqrt(1.0-y*y)*sin(a));
-  float active=smoothstep(fi/18.0,(fi+1.0)/18.0,uImpacts);
-  float radius=mix(0.025,0.21,uImpacts)*active;
+  float impactWeight=smoothstep(fi/18.0,(fi+1.0)/18.0,uImpacts);
+  float radius=mix(0.025,0.21,uImpacts)*impactWeight;
   float d=length(n-center);
-  mask=max(mask,(1.0-smoothstep(radius*0.65,radius,d))*active);
+  mask=max(mask,(1.0-smoothstep(radius*0.65,radius,d))*impactWeight);
  }
  return mask;
 }
@@ -143,7 +143,7 @@ const S=D.UI('#ui',[
  {id:'env',label:'환경 반사 세기',min:0,max:3,step:.1,value:1.5}
 ]);
 
-const cam=D.orbit(cv,{dist:11,pitch:.2,yaw:0});document.querySelector('#reset').onclick=()=>{cam.dist=11;cam.yaw=0;cam.pitch=.2;rotation=0;};
+const cam=D.orbit(cv,{dist:12.5,pitch:.2,yaw:0});document.querySelector('#reset').onclick=()=>{cam.dist=12.5;cam.yaw=0;cam.pitch=.2;rotation=0;};
 const view=D.M4.create(),proj=D.M4.create(),vp=D.M4.create();
 document.querySelector('#note').textContent='가열이 증가하면 행성이 태양에 접근하고 향한 면의 산화가 넓어집니다. 충돌은 별도의 밝은 금속 흔적을 만듭니다. 겹치면 새 충돌 흔적이 우선합니다. 실제 화학·충돌 시뮬레이션이 아닌 창작 규칙입니다.';
 let visible=true;new IntersectionObserver(e=>visible=e[0].isIntersecting).observe(cv);
@@ -151,12 +151,12 @@ let rotation=0;const model=D.M4.create();
 D.loop((time,dt)=>{
  if(!visible||document.hidden)return;
  D.fit(cv);gl.viewport(0,0,cv.width,cv.height);D.clearColor(gl);gl.enable(gl.DEPTH_TEST);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
- const eye=cam.eye([0,0,0]);D.M4.lookAt(view,eye,[0,0,0],[0,1,0]);D.M4.perspective(proj,Math.PI/4,cv.width/cv.height,.1,100);D.M4.multiply(vp,proj,view);
+ const eye=cam.eye([0,0,0]);D.M4.lookAt(view,eye,[0,0,0],[0,1,0]);D.M4.perspective(proj,2*Math.atan(Math.tan(Math.PI/8)*Math.max(1,cv.height/cv.width)),cv.width/cv.height,.1,100);D.M4.multiply(vp,proj,view);
  gl.useProgram(prog);gl.uniform1i(U.uStage,5);gl.uniform1i(U.uView,Number(S.view));gl.uniformMatrix4fv(U.uVP,false,vp);gl.uniform3fv(U.uEye,eye);
  gl.uniform3fv(U.uLight,[.6,.7,1.]);gl.uniform3fv(U.uSunPos,[-3.0,0,0]);gl.uniform1f(U.uHeat,S.heat/100);gl.uniform1f(U.uImpacts,S.impacts/100);gl.uniform3fv(U.uTint,[1,1,1]);
  for(const [key,value] of Object.entries({uNormalStrength:S.normal,uPower:S.power,uAmbient:S.ambient,uEnvPower:S.env}))gl.uniform1f(U[key],value);
  [...textures.rock_boulder_dry,envTex].forEach((tex,i)=>{
-  gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.impactWeightTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,tex);
   gl.uniform1i(U[['uColor','uNormal','uARM','uEnv'][i]],i);
  });
  if(S.spin)rotation+=Math.min(dt,.05)*.25;
