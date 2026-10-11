@@ -81,6 +81,7 @@
         });
         box.appendChild(lab);
         box.appendChild(inp);
+        const number=document.createElement("input");number.type="number";number.min=d.min;number.max=d.max;number.step=inp.step;number.value=d.value;number.setAttribute("aria-label",d.label+" 값");number.style.cssText="width:5rem;margin-top:3px";inp.addEventListener("input",()=>number.value=inp.value);number.addEventListener("input",()=>{if(number.value!==""&&Number.isFinite(number.valueAsNumber)){inp.value=Math.max(d.min,Math.min(d.max,number.valueAsNumber));values[d.id]=Number(inp.value);paint(d.id);fire(d.id);}});box.appendChild(number);
       }
 
       if (d.hint) {

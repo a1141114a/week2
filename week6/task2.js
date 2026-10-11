@@ -1,7 +1,5 @@
-/* 6주차 실습 1 시작 코드. TODO 1~5를 직접 작성하여 완성하세요.
- * 비교 예제 d06-materials.js는 정답을 확인하는 참고 자료입니다.
- * Copilot에 각 TODO와 week06.md 수식을 읽히고 코드를 제안받아도 됩니다.
- * 각 단계에서 무엇이 왜 달라졌는지 직접 화면으로 검증하세요.
+/* Computer Graphics Week 06. Based on professor-provided starter.
+ * Implemented TODO 1–5: color, PBR D/F/G, ARM, tangent normals, environment reflection.
  */
 (() => {
 'use strict';
@@ -132,7 +130,7 @@ function load(name){
 }
 for(const [asset,kinds] of Object.entries(assets))textures[asset]=kinds.map(kind=>load(asset+'_'+kind));
 const envTex=load('studio_small_09_tonemapped');
-Promise.all(jobs).then(()=>{document.querySelector('#status').textContent=failed?'텍스처 로딩 실패: HTTP 서버와 파일 경로 확인':'텍스처 로딩 완료 · task1.js의 TODO 1–5 구현 완료';});
+Promise.all(jobs).then(()=>{document.querySelector('#status').textContent=failed?'텍스처 로딩 실패: HTTP 서버와 파일 경로 확인':'텍스처 로딩 완료 · PBR · 법선맵 · 두 마스크 준비 완료';});
 document.querySelector('#ui').innerHTML='';
 const S=D.UI('#ui',[
  {id:'heat',label:'태양 가열 / 접근',min:0,max:100,step:1,value:50},
@@ -156,7 +154,7 @@ D.loop((time,dt)=>{
  const eye=cam.eye([0,0,0]);D.M4.lookAt(view,eye,[0,0,0],[0,1,0]);D.M4.perspective(proj,Math.PI/4,cv.width/cv.height,.1,100);D.M4.multiply(vp,proj,view);
  gl.useProgram(prog);gl.uniform1i(U.uStage,5);gl.uniform1i(U.uView,Number(S.view));gl.uniformMatrix4fv(U.uVP,false,vp);gl.uniform3fv(U.uEye,eye);
  gl.uniform3fv(U.uLight,[.6,.7,1.]);gl.uniform3fv(U.uSunPos,[-3.0,0,0]);gl.uniform1f(U.uHeat,S.heat/100);gl.uniform1f(U.uImpacts,S.impacts/100);gl.uniform3fv(U.uTint,[1,1,1]);
- for(const [key,value] of Object.entries({uRough:S.rough,uMetal:S.metal,uNormalStrength:S.normal,uPower:S.power,uAmbient:S.ambient,uEnvPower:S.env}))gl.uniform1f(U[key],value);
+ for(const [key,value] of Object.entries({uNormalStrength:S.normal,uPower:S.power,uAmbient:S.ambient,uEnvPower:S.env}))gl.uniform1f(U[key],value);
  [...textures.rock_boulder_dry,envTex].forEach((tex,i)=>{
   gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,tex);
   gl.uniform1i(U[['uColor','uNormal','uARM','uEnv'][i]],i);

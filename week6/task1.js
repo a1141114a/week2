@@ -1,7 +1,5 @@
-/* 6주차 실습 1 시작 코드. TODO 1~5를 직접 작성하여 완성하세요.
- * 비교 예제 d06-materials.js는 정답을 확인하는 참고 자료입니다.
- * Copilot에 각 TODO와 week06.md 수식을 읽히고 코드를 제안받아도 됩니다.
- * 각 단계에서 무엇이 왜 달라졌는지 직접 화면으로 검증하세요.
+/* Computer Graphics Week 06. Based on professor-provided starter.
+ * Implemented TODO 1–5: color, PBR D/F/G, ARM, tangent normals, environment reflection.
  */
 (() => {
 'use strict';
@@ -140,7 +138,7 @@ const S=D.UI('#ui',[
  {id:'env',label:'환경맵 반사 세기',min:0,max:3,step:.1,value:1.5},
 ]);
 
-const cam=D.orbit(cv,{dist:3.7,pitch:.15});document.querySelector('#reset').onclick=()=>{cam.dist=3.7;cam.yaw=0;cam.pitch=.15;};
+const cam=D.orbit(cv,{dist:3.7,pitch:.15});document.querySelector('#reset').onclick=()=>{cam.dist=S.shape==='floor'?10:3.7;cam.yaw=S.shape==='floor'?0:.6;cam.pitch=S.shape==='floor'?.12:.15;};
 const view=D.M4.create(),proj=D.M4.create(),vp=D.M4.create();
 document.querySelector('#note').textContent='같은 카메라에서 단계 1·3·4를 비교하세요. 환경 반사는 LDR 파노라마와 일반 밉맵을 이용한 근사입니다.';
 let visible=true;new IntersectionObserver(e=>visible=e[0].isIntersecting).observe(cv);
