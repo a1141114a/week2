@@ -156,7 +156,7 @@ D.loop((time,dt)=>{
  gl.uniform3fv(U.uLight,[.6,.7,1.]);gl.uniform3fv(U.uSunPos,[-3.0,0,0]);gl.uniform1f(U.uHeat,S.heat/100);gl.uniform1f(U.uImpacts,S.impacts/100);gl.uniform3fv(U.uTint,[1,1,1]);
  for(const [key,value] of Object.entries({uNormalStrength:S.normal,uPower:S.power,uAmbient:S.ambient,uEnvPower:S.env}))gl.uniform1f(U[key],value);
  [...textures.rock_boulder_dry,envTex].forEach((tex,i)=>{
-  gl.impactWeightTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,tex);
   gl.uniform1i(U[['uColor','uNormal','uARM','uEnv'][i]],i);
  });
  if(S.spin)rotation+=Math.min(dt,.05)*.25;
