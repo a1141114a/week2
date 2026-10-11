@@ -2,8 +2,8 @@
 
 PBR과 텍스처 매핑
 
-- [Task 1 · 재질 실험실](https://a1141114a.github.io/week2/week6/task1.html)
-- [Task 2 · 페룸 — 금속 행성](https://a1141114a.github.io/week2/week6/task2.html)
+- [Task 1 · 재질 실험실](https://a1141114a.github.io/week2/week6/task1.html?rev=6.3)
+- [Task 2 · 페룸 — 금속 행성](https://a1141114a.github.io/week2/week6/task2.html?rev=6.3)
 
 교수님이 제공한 `week06-material-starter.zip`을 바탕으로 제작한 컴퓨터 그래픽스(CG) 과제입니다.
 

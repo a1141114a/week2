@@ -4,8 +4,8 @@
 
 교수님이 제공한 `week06-material-starter.zip`을 바탕으로 `task1.js`의 TODO 1–5를 구현하였다. 실습 2는 완성한 실습 1의 PBR·텍스처·법선맵 계산을 구형 행성에 옮겨 제작하였다.
 
-- [Task 1 — 재질 실험실 실행](https://a1141114a.github.io/week2/week6/task1.html)
-- [Task 2 — 페룸 금속 행성 실행](https://a1141114a.github.io/week2/week6/task2.html)
+- [Task 1 — 재질 실험실 실행](https://a1141114a.github.io/week2/week6/task1.html?rev=6.3)
+- [Task 2 — 페룸 금속 행성 실행](https://a1141114a.github.io/week2/week6/task2.html?rev=6.3)
 
 ## Task 1 — 같은 형상, 다른 재질
 
