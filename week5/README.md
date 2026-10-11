@@ -26,5 +26,5 @@ Lighting and Color — Phong Lighting Model
 
 ### AI 활용
 
-AI는 일부 코드 작성과 README 문장의 표현을 다듬는 데 활용하였다. 결과를 확인한 뒤에는 별도의 수정 요청을 하지 않았다.
+AI는 일부 코드 작성과 README 문장의 표현을 다듬는 데 활용하였다.
 
