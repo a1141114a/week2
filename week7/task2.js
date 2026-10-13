@@ -290,7 +290,7 @@
   async function measure(){
     if(measuring)return;measuring=true;
     const button=document.querySelector('#measure');button.disabled=true;
-    const controls=[...document.querySelectorAll('#ui input,#ui select')];
+    const controls=[...document.querySelectorAll('#ui input,#ui select,.experiment button')];
     controls.forEach(control=>{control.disabled=true;});
     result.textContent='같은 설정에서 방식별 1회 준비 + 5회 측정 중…';
     try{
